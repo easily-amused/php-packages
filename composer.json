@@ -1,0 +1,17 @@
+{
+    "name": "easily-amused/php-packages",
+    "description": "PHP Packages for Easily Amused Projects",
+    "type": "library",
+    "license": "GPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "Easily Amused",
+            "email": "support@easilyamusedinc.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {},
+    "autoload": {
+        "psr-4": { "EA\\Licensing\\" : "Licensing/" }
+    }
+}
