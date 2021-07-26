@@ -5,7 +5,7 @@ namespace EA\Licensing;
 /**
  * EDD Software Licensing Class
  */
-class Licensing {
+class License {
 
 	private $product_id;
 	private $product_name;
