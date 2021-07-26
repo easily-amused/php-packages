@@ -1,6 +1,6 @@
 <?php
 
-namespace EA\Licesing;
+namespace EA\Licensing;
 
 /**
  * EDD Software Licensing Class
