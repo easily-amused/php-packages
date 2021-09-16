@@ -731,11 +731,11 @@ class License {
 			exit();
 		}
 
-		// decode the license data
+		// decode the license data.
 		$license_data = json_decode( wp_remote_retrieve_body( $response ) );
 
 		// $license_data->license will be either "deactivated" or "failed"
-		if ( $license_data->license == 'deactivated' ) {
+		if ( 'deactivated' === $license_data->license ) {
 			delete_option( $this->setting_license_status );
 		}
 
@@ -750,7 +750,7 @@ class License {
 	 */
 	public function admin_settings_page() {
 		$license = get_option( $this->setting_license_key );
-		$status  = get_option( $this->setting_license_status );
+		$status  = get_option( $this->setting_license_status, false );
 		?>
 		<div class="wrap">
 			<h2><?php echo esc_html( $this->product_name ) . ' Settings'; ?></h2>
@@ -763,28 +763,24 @@ class License {
 					<tbody>
 						<tr valign="top">
 							<th scope="row" valign="top">
-								<?php esc_html_e( 'License Key' ); ?>
+								<label class="description" for="<?php echo $this->setting_license_key; ?>"><?php _e( 'License key' ); ?></label>
 							</th>
 							<td>
-								<input id="<?php echo esc_attr( $this->setting_license_key ); ?>" name="<?php echo esc_attr( $this->setting_license_key ); ?>" type="text" class="regular-text" value="<?php esc_attr_e( $license ); ?>" />
-								<label class="description" for="<?php echo esc_attr( $this->setting_license_key ); ?>"><?php _e( 'Enter your license key' ); ?></label>
+								<input id="<?php echo $this->setting_license_key; ?>" name="<?php echo $this->setting_license_key; ?>" type="text" class="regular-text" value="<?php esc_attr_e( $license ); ?>" />
 							</td>
 						</tr>
-						<?php if ( false !== $license ) { ?>
-							<tr valign="top">
-								<th scope="row" valign="top">
-									<?php _e( 'Activate License' ); ?>
-								</th>
-								<td>
-									<?php if ( $status !== false && $status == 'valid' ) { ?>
-										<!-- <span style="color:green;"><?php _e( 'active' ); ?></span> -->
-										<input type="submit" class="button-secondary" name="edd_license_deactivate_showcase" value="<?php _e( 'Deactivate License' ); ?>"/>
-									<?php } else { ?>
-										<input type="submit" class="button-secondary" name="edd_license_activate_showcase" value="<?php _e( 'Activate License' ); ?>"/>
-									<?php } ?>
-								</td>
-							</tr>
-						<?php } ?>
+						<tr valign="top">
+							<th scope="row" valign="top">
+								<?php esc_html_e( 'Activate License' ); ?>
+							</th>
+							<td>
+								<?php if ( false !== $status && 'valid' === $status ) { ?>
+									<input type="submit" class="button button-secondary" style="color: red; border-color: red" name="edd_license_deactivate_showcase" value="<?php _e( 'Deactivate License' ); ?>"/>
+								<?php } else { ?>
+									<input type="submit" class="button button-secondary" name="edd_license_activate_showcase" value="<?php esc_html_e( 'Activate License' ); ?>"/>
+								<?php } ?>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 				<?php submit_button(); ?>
