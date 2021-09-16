@@ -27,10 +27,10 @@ class License {
 		$this->product_name = $name;
 		$this->license_page = $admin_slug . '-settings';
 
-    // admin settings
-    $this->setting_license = 'honors_' . $admin_slug .'_license'; 
-    $this->setting_license_key = 'honors_' . $admin_slug .'_license_key'; 
-    $this->setting_license_status = 'honors_' . $admin_slug .'_license_status';
+		// admin settings.
+		$this->setting_license = 'honors_' . $admin_slug . '_license';
+		$this->setting_license_key = 'honors_' . $admin_slug . '_license_key';
+		$this->setting_license_status = 'honors_' . $admin_slug . '_license_status';
 
 		$this->api_url = trailingslashit( 'https://honorswp.com' );
 		$this->name    = plugin_basename( $plugin_file );
@@ -591,7 +591,7 @@ class License {
 		$api_params = array(
 			'edd_action'  => 'activate_license',
 			'license'     => $license,
-			'item_name'   => urlencode( $this->product_name ), // the name of our product in EDD
+			'item_id'     => $this->product_id, // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
