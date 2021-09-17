@@ -27,10 +27,10 @@ class License {
 		$this->product_name = $name;
 		$this->license_page = $admin_slug . '-settings';
 
-    // admin settings
-    $this->setting_license = 'honors_' . $admin_slug .'_license'; 
-    $this->setting_license_key = 'honors_' . $admin_slug .'_license_key'; 
-    $this->setting_license_status = 'honors_' . $admin_slug .'_license_status';
+		// admin settings.
+		$this->setting_license        = 'honors_' . $admin_slug . '_license';
+		$this->setting_license_key    = 'honors_' . $admin_slug . '_license_key';
+		$this->setting_license_status = 'honors_' . $admin_slug . '_license_status';
 
 		$this->api_url = trailingslashit( 'https://honorswp.com' );
 		$this->name    = plugin_basename( $plugin_file );
@@ -78,7 +78,7 @@ class License {
 		remove_action( 'after_plugin_row_' . $this->name, 'wp_plugin_update_row', 10 );
 		add_action( 'after_plugin_row_' . $this->name, array( $this, 'show_update_notification' ), 10, 2 );
 
-		// Admin Settings & Menu
+		// Admin Settings & Menu.
 		add_action( 'admin_init', array( $this, 'admin_actions' ) );
 		add_action( 'admin_menu', array( $this, 'admin_menu_init' ) );
 		add_action( 'admin_notices', array( $this, 'admin_notices' ) );
@@ -507,35 +507,35 @@ class License {
 		return $request;
 	}
 
-  /**
-   * Admin Actions - fires on admin init
-   *
-   * @return void
-   */
+	/**
+	 * Admin Actions - fires on admin init
+	 *
+	 * @return void
+	 */
 	public function admin_actions() {
 
-    // register settings
+		// Register settings.
 		register_setting( $this->setting_license, $this->setting_license_key);
-    register_setting( $this->setting_license, $this->setting_license_status );
+		register_setting( $this->setting_license, $this->setting_license_status );
 
-    // save?
-    if ( !empty( $_POST ) && isset( $_POST['option_page'], $_POST[$this->setting_license_key] ) ) {
-      // run a quick security check
-      if ( ! check_admin_referer( 'honors_license_nonce', 'honors_license_nonce' ) ) {
-        return; // get out if we didn't click the Activate button
-      }
-      update_option( $this->setting_license_key, sanitize_text_field( $_POST[$this->setting_license_key] ) );
-    }
+		// save?
+		if ( ! empty( $_POST ) && isset( $_POST['option_page'], $_POST[ $this->setting_license_key ] ) ) {
+			// run a quick security check.
+			if ( ! check_admin_referer( 'honors_license_nonce', 'honors_license_nonce' ) ) {
+				return; // get out if we didn't click the Activate button.
+			}
+			update_option( $this->setting_license_key, sanitize_text_field( $_POST[ $this->setting_license_key ] ) );
+		}
 
-    // activate
+		// Activate.
 		if ( isset( $_POST['edd_license_activate_showcase'] ) ) {
 			$this->activate_license();
 		}
 
-    // deactivate
-    if( isset( $_POST['edd_license_deactivate_showcase'] ) ) {
-      $this->deactivate_license();
-    }
+		// Deactivate.
+		if ( isset( $_POST['edd_license_deactivate_showcase'] ) ) {
+			$this->deactivate_license();
+		}
 	}
 
 	/**
@@ -558,9 +558,9 @@ class License {
 				case 'false':
 					$message = urldecode( $_GET['message'] );
 					?>
-		  <div class="error">
-			<p><?php echo $message; ?></p>
-		  </div>
+						<div class="error">
+							<p><?php echo $message; ?></p>
+						</div>
 					<?php
 					break;
 
@@ -591,7 +591,7 @@ class License {
 		$api_params = array(
 			'edd_action'  => 'activate_license',
 			'license'     => $license,
-			'item_name'   => urlencode( $this->product_name ), // the name of our product in EDD
+			'item_id'     => $this->product_id, // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
@@ -687,14 +687,14 @@ class License {
 			return; // get out if we didn't click the Activate button
 		}
 
-		// retrieve the license from the database
+		// Retrieve the license from the database.
 		$license = trim( get_option( $this->setting_license_key ) );
 
-		// data to send in our API request
+		// Data to send in our API request.
 		$api_params = array(
 			'edd_action'  => 'deactivate_license',
 			'license'     => $license,
-			'item_name'   => urlencode( $this->product_name ), // the name of our product in EDD
+			'item_id'     => $this->product_id, // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
@@ -731,11 +731,11 @@ class License {
 			exit();
 		}
 
-		// decode the license data
+		// decode the license data.
 		$license_data = json_decode( wp_remote_retrieve_body( $response ) );
 
 		// $license_data->license will be either "deactivated" or "failed"
-		if ( $license_data->license == 'deactivated' ) {
+		if ( 'deactivated' === $license_data->license ) {
 			delete_option( $this->setting_license_status );
 		}
 
@@ -750,46 +750,42 @@ class License {
 	 */
 	public function admin_settings_page() {
 		$license = get_option( $this->setting_license_key );
-		$status  = get_option( $this->setting_license_status );
+		$status  = get_option( $this->setting_license_status, false );
 		?>
-	<div class="wrap">
-		<h2><?php _e( $this->product_name . ' Settings' ); ?></h2>
-		<form method="post" action="<?php echo admin_url( 'plugins.php?page=' . $this->license_page ); ?>">
+		<div class="wrap">
+			<h2><?php echo esc_html( $this->product_name ) . ' Settings'; ?></h2>
+			<form method="post" action="<?php echo admin_url( 'plugins.php?page=' . $this->license_page ); ?>">
 
-			<?php settings_fields( $this->setting_license ); ?>
-      <?php wp_nonce_field( 'honors_license_nonce', 'honors_license_nonce' ); ?>
+				<?php settings_fields( $this->setting_license ); ?>
+				<?php wp_nonce_field( 'honors_license_nonce', 'honors_license_nonce' ); ?>
 
-			<table class="form-table">
-				<tbody>
-					<tr valign="top">
-						<th scope="row" valign="top">
-							<?php _e( 'License Key' ); ?>
-						</th>
-						<td>
-							<input id="<?php echo $this->setting_license_key; ?>" name="<?php echo $this->setting_license_key; ?>" type="text" class="regular-text" value="<?php esc_attr_e( $license ); ?>" />
-							<label class="description" for="<?php echo $this->setting_license_key; ?>"><?php _e( 'Enter your license key' ); ?></label>
-						</td>
-					</tr>
-					<?php if ( false !== $license ) { ?>
+				<table class="form-table">
+					<tbody>
 						<tr valign="top">
 							<th scope="row" valign="top">
-								<?php _e( 'Activate License' ); ?>
+								<label class="description" for="<?php echo $this->setting_license_key; ?>"><?php _e( 'License key' ); ?></label>
 							</th>
 							<td>
-								<?php if ( $status !== false && $status == 'valid' ) { ?>
-									<!-- <span style="color:green;"><?php _e( 'active' ); ?></span> -->
-									<input type="submit" class="button-secondary" name="edd_license_deactivate_showcase" value="<?php _e( 'Deactivate License' ); ?>"/>
-                <?php } else { ?>
-									<input type="submit" class="button-secondary" name="edd_license_activate_showcase" value="<?php _e( 'Activate License' ); ?>"/>
+								<input id="<?php echo $this->setting_license_key; ?>" name="<?php echo $this->setting_license_key; ?>" type="text" class="regular-text" value="<?php esc_attr_e( $license ); ?>" />
+							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row" valign="top">
+								<?php esc_html_e( 'Activate License' ); ?>
+							</th>
+							<td>
+								<?php if ( false !== $status && 'valid' === $status ) { ?>
+									<input type="submit" class="button button-secondary" style="color: red; border-color: red" name="edd_license_deactivate_showcase" value="<?php _e( 'Deactivate License' ); ?>"/>
+								<?php } else { ?>
+									<input type="submit" class="button button-secondary" name="edd_license_activate_showcase" value="<?php esc_html_e( 'Activate License' ); ?>"/>
 								<?php } ?>
 							</td>
 						</tr>
-					<?php } ?>
-				</tbody>
-			</table>
-			<?php submit_button(); ?>
-
-		</form>
+					</tbody>
+				</table>
+				<?php submit_button(); ?>
+			</form>
+		</div>
 		<?php
 	}
 
