@@ -528,12 +528,12 @@ class License {
 		}
 
 		// Activate.
-		if ( isset( $_POST['edd_license_activate_showcase'] ) ) {
+		if ( isset( $_POST['edd_license_activate_showcase-' . esc_attr( $this->license_page )] ) ) {
 			$this->activate_license();
 		}
 
 		// Deactivate.
-		if ( isset( $_POST['edd_license_deactivate_showcase'] ) ) {
+		if ( isset( $_POST['edd_license_deactivate_showcase-'. esc_attr( $this->license_page )] ) ) {
 			$this->deactivate_license();
 		}
 	}
@@ -775,9 +775,9 @@ class License {
 							</th>
 							<td>
 								<?php if ( false !== $status && 'valid' === $status ) { ?>
-									<input type="submit" class="button button-secondary" style="color: red; border-color: red" name="edd_license_deactivate_showcase" value="<?php _e( 'Deactivate License' ); ?>"/>
+									<input type="submit" class="button button-secondary" style="color: red; border-color: red" name="edd_license_deactivate_showcase-<?php echo esc_attr( $this->license_page ); ?>" value="<?php _e( 'Deactivate License' ); ?>"/>
 								<?php } else { ?>
-									<input type="submit" class="button button-secondary" name="edd_license_activate_showcase" value="<?php esc_html_e( 'Activate License' ); ?>"/>
+									<input type="submit" class="button button-secondary" name="edd_license_activate_showcase-<?php echo esc_attr( $this->license_page ); ?>" value="<?php esc_html_e( 'Activate License' ); ?>"/>
 								<?php } ?>
 							</td>
 						</tr>
