@@ -22,7 +22,7 @@ class License {
 	private $beta                 = false;
 	private $health_check_timeout = 5;
 
-	public function __construct( $name, $product_id = 0, $admin_slug = '', $plugin_file, $version ) {
+	public function __construct( $name, $product_id, $admin_slug, $plugin_file, $version ) {
 		$this->product_id   = $product_id;
 		$this->product_name = $name;
 		$this->license_page = $admin_slug . '-settings';
