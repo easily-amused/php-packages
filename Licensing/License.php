@@ -8,8 +8,6 @@ namespace EA\Licensing;
 class License {
 
 	private $product_id;
-	private $product_name;
-	private $license_page;
 	private $user_license_key;
 
 	private $api_url              = '';
@@ -17,38 +15,34 @@ class License {
 	private $name                 = '';
 	private $slug                 = '';
 	private $version              = '';
-	private $wp_override          = false;
 	private $cache_key            = '';
-	private $beta                 = false;
 	private $health_check_timeout = 5;
+	private $licence_messages     = array();
 
-	public function __construct( $name, $product_id, $admin_slug, $plugin_file, $version ) {
-		$this->product_id   = $product_id;
-		$this->product_name = $name;
-		$this->license_page = $admin_slug . '-settings';
+	public function __construct( $product_id = 0, $plugin_file, $version ) {
+		$this->product_id = $product_id;
 
 		// admin settings.
-		$this->setting_license        = 'honors_' . $admin_slug . '_license';
-		$this->setting_license_key    = 'honors_' . $admin_slug . '_license_key';
-		$this->setting_license_status = 'honors_' . $admin_slug . '_license_status';
+		$this->setting_license = 'honors_license';
+		$this->show_in_ui      = $show_in_ui;
 
 		$this->api_url = trailingslashit( 'https://honorswp.com' );
 		$this->name    = plugin_basename( $plugin_file );
 		$this->slug    = basename( $plugin_file, '.php' );
 
 		$this->version          = $version;
-		$this->wp_override      = false;
-		$this->user_license_key = trim( get_option( $this->setting_license_key ) );
+		$current_licence_keys   = get_option( 'honors_license_key' );
+		$this->user_license_key = ! empty( $current_licence_keys[ $this->slug ]['licence_key'] ) ? $current_licence_keys[ $this->slug ]['licence_key'] : '';
+		$this->cache_key        = 'edd_sl_' . md5( serialize( $this->slug . $this->user_license_key ) );
 
-		$this->cache_key = 'edd_sl_' . md5( serialize( $this->slug . $this->user_license_key ) );
-
-		$this->api_data                 = array(
+		$this->api_data = array(
 			'version' => $this->version,
 			'license' => $this->user_license_key,
 			'item_id' => $product_id,
 			'author'  => 'HonorsWP',
 			'beta'    => false,
 		);
+
 		$edd_plugin_data[ $this->slug ] = $this->api_data;
 
 		/**
@@ -77,11 +71,35 @@ class License {
 		add_filter( 'plugins_api', array( $this, 'plugins_api_filter' ), 10, 3 );
 		remove_action( 'after_plugin_row_' . $this->name, 'wp_plugin_update_row', 10 );
 		add_action( 'after_plugin_row_' . $this->name, array( $this, 'show_update_notification' ), 10, 2 );
-
 		// Admin Settings & Menu.
 		add_action( 'admin_init', array( $this, 'admin_actions' ) );
 		add_action( 'admin_menu', array( $this, 'admin_menu_init' ) );
-		add_action( 'admin_notices', array( $this, 'admin_notices' ) );
+		add_filter( 'extra_plugin_headers', array( $this, 'extra_headers' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'setting_license_page_style' ) );
+	}
+
+	/**
+	 * Enqueue a script in the WordPress admin on edit.php.
+	 *
+	 * @param int $hook Hook suffix for the current admin page.
+	 */
+	public function setting_license_page_style( $hook ) {
+		if ( 'settings_page_honorswp-settings' !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_style( 'honors-license-style', plugin_dir_url( __FILE__ ) . 'assets/license.css', array(), '1.0' );
+	}
+
+	/**
+	 * Adds newly recognized data header in WordPress plugin files.
+	 *
+	 * @param array $headers
+	 * @return array
+	 */
+	public function extra_headers( $headers ) {
+		$headers[] = 'HonorsWP-Product';
+		return $headers;
 	}
 
 	/**
@@ -102,10 +120,10 @@ class License {
 		global $pagenow;
 
 		if ( ! is_object( $_transient_data ) ) {
-			$_transient_data = new \stdClass();
+			$_transient_data = new stdClass();
 		}
 
-		if ( 'plugins.php' == $pagenow && is_multisite() ) {
+		if ( 'options-general.php' == $pagenow && is_multisite() ) {
 			return $_transient_data;
 		}
 
@@ -188,7 +206,7 @@ class License {
 
 		$update_cache = get_site_transient( 'update_plugins' );
 
-		$update_cache = is_object( $update_cache ) ? $update_cache : new \stdClass();
+		$update_cache = is_object( $update_cache ) ? $update_cache : new stdClass();
 
 		if ( empty( $update_cache->response ) || empty( $update_cache->response[ $this->name ] ) ) {
 
@@ -508,6 +526,67 @@ class License {
 	}
 
 	/**
+	 * Get a plugin's licence messages.
+	 *
+	 * @param string $product_slug The plugin slug.
+	 * @return array
+	 */
+	public function get_messages( $product_slug ) {
+		if ( ! isset( $this->licence_messages[ $product_slug ] ) ) {
+			$this->licence_messages[ $product_slug ] = [];
+		}
+
+		return $this->licence_messages[ $product_slug ];
+	}
+
+	/**
+	 * Set a plugin's licence messages.
+	 *
+	 * @param string $product_slug The plugin slug.
+	 * @return array
+	 */
+	public function set_messages( $product_slug, $status ) {
+
+		switch ( $status ) {
+
+			case 'expired':
+				$this->licence_messages[ $product_slug ][] = sprintf(
+					__( 'Your license key expired on %s.' ),
+					date_i18n( get_option( 'date_format' ), strtotime( $license_data->expires, current_time( 'timestamp' ) ) )
+				);
+				break;
+
+			case 'disabled':
+			case 'revoked':
+				$this->licence_messages[ $product_slug ][] = __( 'Your license key has been disabled.' );
+				break;
+
+			case 'missing':
+				$this->licence_messages[ $product_slug ][] = __( 'Invalid license.' );
+				break;
+
+			case 'invalid':
+			case 'site_inactive':
+				$this->licence_messages[ $product_slug ][] = __( 'Your license is not active for this URL.' );
+				break;
+
+			case 'item_name_mismatch':
+				$this->licence_messages[ $product_slug ][] = sprintf( __( 'This appears to be an invalid license key for %s.' ), $this->name );
+				break;
+
+			case 'no_activations_left':
+				$this->licence_messages[ $product_slug ][] = __( 'Your license key has reached its activation limit.' );
+				break;
+
+			default:
+				$this->licence_messages[ $product_slug ][] = __( 'An error occurred, please try again.' );
+				break;
+		}
+
+		return $this->licence_messages[ $product_slug ];
+	}
+
+	/**
 	 * Admin Actions - fires on admin init
 	 *
 	 * @return void
@@ -515,26 +594,34 @@ class License {
 	public function admin_actions() {
 
 		// Register settings.
-		register_setting( $this->setting_license, $this->setting_license_key);
-		register_setting( $this->setting_license, $this->setting_license_status );
+		register_setting( $this->setting_license, 'honors_license_key' );
+		register_setting( $this->setting_license, 'honors_license_status' );
 
-		// save?
-		if ( ! empty( $_POST ) && isset( $_POST['option_page'], $_POST[ $this->setting_license_key ] ) ) {
-			// run a quick security check.
-			if ( ! check_admin_referer( 'honors_license_nonce', 'honors_license_nonce' ) ) {
-				return; // get out if we didn't click the Activate button.
-			}
-			update_option( $this->setting_license_key, sanitize_text_field( $_POST[ $this->setting_license_key ] ) );
+		if (
+			empty( $_POST )
+			|| empty( $_POST['_wpnonce'] )
+			|| empty( $_POST['action'] )
+			|| empty( $_POST['product_slug'] )
+			|| ! wp_verify_nonce( wp_unslash( $_POST['_wpnonce'] ), 'honorswp-manage-licence' ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce should not be modified.
+		) {
+			return false;
 		}
 
-		// Activate.
-		if ( isset( $_POST['edd_license_activate_showcase-' . esc_attr( $this->license_page )] ) ) {
-			$this->activate_license();
-		}
+		$product_slug = sanitize_text_field( wp_unslash( $_POST['product_slug'] ) );
 
-		// Deactivate.
-		if ( isset( $_POST['edd_license_deactivate_showcase-'. esc_attr( $this->license_page )] ) ) {
-			$this->deactivate_license();
+		switch ( $_POST['action'] ) {
+			case 'activate':
+				if ( empty( $_POST['licence_key'] ) ) {
+					$this->add_error( $product_slug, __( 'Please enter a valid license key in order to activate this plugin\'s license.' ) );
+					break;
+				}
+
+				$licence_key = sanitize_text_field( wp_unslash( $_POST['licence_key'] ) );
+				$this->activate_license( $product_slug, $licence_key );
+				break;
+			case 'deactivate':
+				$this->deactivate_license( $product_slug );
+				break;
 		}
 	}
 
@@ -544,32 +631,18 @@ class License {
 	 * @return void
 	 */
 	public function admin_menu_init() {
+		global $submenu;
+
 		// changelog
 		$this->init_changelog();
 
-		add_plugins_page( $this->product_name . ' Settings', $this->product_name, 'manage_options', $this->license_page, array( $this, 'admin_settings_page' ) );
-	}
+		$main_menu = 'options-general.php';
 
-	public function admin_notices() {
-		if ( isset( $_GET['sl_activation'] ) && ! empty( $_GET['message'] ) ) {
-
-			switch ( $_GET['sl_activation'] ) {
-
-				case 'false':
-					$message = urldecode( $_GET['message'] );
-					?>
-						<div class="error">
-							<p><?php echo $message; ?></p>
-						</div>
-					<?php
-					break;
-
-				case 'true':
-				default:
-					// Developers can put a custom success message here for when activation is successful if they way.
-					break;
-
-			}
+		if (
+			isset( $submenu[ $main_menu ] ) &&
+			! in_array( 'honorswp-settings', wp_list_pluck( $submenu[ $main_menu ], 2 ) )
+		) {
+			add_options_page( 'HonorsWP Settings', 'HonorsWP Settings', 'manage_options', 'honorswp-settings', array( $this, 'admin_settings_page' ) );
 		}
 	}
 
@@ -578,19 +651,12 @@ class License {
 	 *
 	 * @return void
 	 */
-	private function activate_license() {
-		// run a quick security check
-		if ( ! check_admin_referer( 'honors_license_nonce', 'honors_license_nonce' ) ) {
-			return; // get out if we didn't click the Activate button
-		}
-
-		// retrieve the license from the database
-		$license = trim( get_option( $this->setting_license_key ) );
+	private function activate_license( $product_slug, $licence_key ) {
 
 		// data to send in our API request
 		$api_params = array(
 			'edd_action'  => 'activate_license',
-			'license'     => $license,
+			'license'     => $licence_key,
 			'item_id'     => $this->product_id, // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
@@ -610,90 +676,40 @@ class License {
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 
 			if ( is_wp_error( $response ) ) {
-				$message = $response->get_error_message();
+				$this->licence_messages[ $product_slug ] = $response->get_error_message();
 			} else {
-				$message = __( 'An error occurred, please try again.' );
+				$this->licence_messages[ $product_slug ] = __( 'An error occurred, please try again.' );
 			}
 		} else {
 
 			$license_data = json_decode( wp_remote_retrieve_body( $response ) );
 
 			if ( false === $license_data->success ) {
-
-				switch ( $license_data->error ) {
-
-					case 'expired':
-						$message = sprintf(
-							__( 'Your license key expired on %s.' ),
-							date_i18n( get_option( 'date_format' ), strtotime( $license_data->expires, current_time( 'timestamp' ) ) )
-						);
-						break;
-
-					case 'disabled':
-					case 'revoked':
-						$message = __( 'Your license key has been disabled.' );
-						break;
-
-					case 'missing':
-						$message = __( 'Invalid license.' );
-						break;
-
-					case 'invalid':
-					case 'site_inactive':
-						$message = __( 'Your license is not active for this URL.' );
-						break;
-
-					case 'item_name_mismatch':
-						$message = sprintf( __( 'This appears to be an invalid license key for %s.' ), $this->name );
-						break;
-
-					case 'no_activations_left':
-						$message = __( 'Your license key has reached its activation limit.' );
-						break;
-
-					default:
-						$message = __( 'An error occurred, please try again.' );
-						break;
-				}
+				$this->licence_messages[ $product_slug ] = $this->set_messages( $product_slug, $license_data->error );
+				return;
 			}
 		}
 
-		// Check if anything passed on a message constituting a failure
-		if ( ! empty( $message ) ) {
-			$base_url = admin_url( 'plugins.php?page=' . $this->license_page );
-			$redirect = add_query_arg(
-				array(
-					'sl_activation' => 'false',
-					'message'       => urlencode( $message ),
-				),
-				$base_url
-			);
-
-			wp_redirect( $redirect );
-			exit();
+		// $license_data->license will be either "valid" or "invalid"
+		if ( empty( $this->licence_messages[ $product_slug ] ) ) {
+			$this->update( $product_slug, 'licence_key', $licence_key );
+			$this->update( $product_slug, 'status', $license_data->license );
 		}
 
-		// $license_data->license will be either "valid" or "invalid"
-
-		update_option( $this->setting_license_status, $license_data->license );
-		wp_redirect( admin_url( 'plugins.php?page=' . $this->license_page ) );
-		exit();
 	}
 
-	private function deactivate_license() {
-
-		// run a quick security check
-		if ( ! check_admin_referer( 'honors_license_nonce', 'honors_license_nonce' ) ) {
-			return; // get out if we didn't click the Activate button
-		}
-
+	private function deactivate_license( $product_slug ) {
 		// Retrieve the license from the database.
-		$license = trim( get_option( $this->setting_license_key ) );
+		$license = get_option( 'honors_license_key' );
+
+		if ( empty( $license[ $product_slug ][ 'licence_key' ] ) ) {
+			return;
+		}
 
 		// Data to send in our API request.
 		$api_params = array(
 			'edd_action'  => 'deactivate_license',
-			'license'     => $license,
+			'license'     => $license[ $product_slug ][ 'licence_key' ],
 			'item_id'     => $this->product_id, // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
@@ -713,22 +729,10 @@ class License {
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 
 			if ( is_wp_error( $response ) ) {
-				$message = $response->get_error_message();
+				$this->licence_messages[ $product_slug ] = $response->get_error_message();
 			} else {
-				$message = __( 'An error occurred, please try again.' );
+				$this->licence_messages[ $product_slug ] = __( 'An error occurred, please try again.' );
 			}
-
-			$base_url = admin_url( 'plugins.php?page=' . $this->license_page );
-			$redirect = add_query_arg(
-				array(
-					'sl_activation' => 'false',
-					'message'       => urlencode( $message ),
-				),
-				$base_url
-			);
-
-			wp_redirect( $redirect );
-			exit();
 		}
 
 		// decode the license data.
@@ -736,11 +740,38 @@ class License {
 
 		// $license_data->license will be either "deactivated" or "failed"
 		if ( 'deactivated' === $license_data->license ) {
-			delete_option( $this->setting_license_status );
+			$this->delete( $product_slug, 'licence_key' );
+			$this->delete( $product_slug, 'status' );
+		}
+	}
+
+	/**
+	 * Returns list of installed HonorsWP plugins with managed licenses indexed by product ID.
+	 *
+	 * @param bool $active_only Only return active plugins.
+	 * @return array
+	 */
+	public function get_installed_plugins( $active_only = true ) {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		wp_redirect( admin_url( 'plugins.php?page=' . $this->license_page ) );
-		exit();
+		$honors_plugins = [];
+		$plugins        = get_plugins();
+
+		foreach ( $plugins as $filename => $data ) {
+
+			if ( empty( $data['HonorsWP-Product'] ) || ( true === $active_only && ! is_plugin_active( $filename ) ) ) {
+				continue;
+			}
+
+			$data['_filename']                         = $filename;
+			$data['_product_slug']                     = $data['HonorsWP-Product'];
+			$data['_type']                             = 'plugin';
+			$honors_plugins[ $data['HonorsWP-Product'] ] = $data;
+		}
+
+		return $honors_plugins;
 	}
 
 	/**
@@ -749,44 +780,84 @@ class License {
 	 * @return void
 	 */
 	public function admin_settings_page() {
-		$license = get_option( $this->setting_license_key );
-		$status  = get_option( $this->setting_license_status, false );
-		?>
-		<div class="wrap">
-			<h2><?php echo esc_html( $this->product_name ) . ' Settings'; ?></h2>
-			<form method="post" action="<?php echo admin_url( 'plugins.php?page=' . $this->license_page ); ?>">
+		$licenced_plugins = $this->get_installed_plugins();
 
-				<?php settings_fields( $this->setting_license ); ?>
-				<?php wp_nonce_field( 'honors_license_nonce', 'honors_license_nonce' ); ?>
+		include_once dirname( __FILE__ ) . '/html-licences.php';
+	}
 
-				<table class="form-table">
-					<tbody>
-						<tr valign="top">
-							<th scope="row" valign="top">
-								<label class="description" for="<?php echo $this->setting_license_key; ?>"><?php _e( 'License key' ); ?></label>
-							</th>
-							<td>
-								<input id="<?php echo $this->setting_license_key; ?>" name="<?php echo $this->setting_license_key; ?>" type="text" class="regular-text" value="<?php esc_attr_e( $license ); ?>" />
-							</td>
-						</tr>
-						<tr valign="top">
-							<th scope="row" valign="top">
-								<?php esc_html_e( 'Activate License' ); ?>
-							</th>
-							<td>
-								<?php if ( false !== $status && 'valid' === $status ) { ?>
-									<input type="submit" class="button button-secondary" style="color: red; border-color: red" name="edd_license_deactivate_showcase-<?php echo esc_attr( $this->license_page ); ?>" value="<?php _e( 'Deactivate License' ); ?>"/>
-								<?php } else { ?>
-									<input type="submit" class="button button-secondary" name="edd_license_activate_showcase-<?php echo esc_attr( $this->license_page ); ?>" value="<?php esc_html_e( 'Activate License' ); ?>"/>
-								<?php } ?>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<?php submit_button(); ?>
-			</form>
-		</div>
-		<?php
+	/**
+	 * Retrieve a HonorsWP plugin's licence data.
+	 *
+	 * @param string $product_slug
+	 * @param string $key
+	 * @param mixed  $default
+	 *
+	 * @return mixed
+	 */
+	public function get( $product_slug, $key, $default = false ) {
+		$options = get_option( 'honors_license_key', [] );
+
+		if ( isset( $options[ $product_slug ][ $key ] ) ) {
+			return $options[ $product_slug ][ $key ];
+		}
+		return $default;
+	}
+
+	/**
+	 * Update a HonorsWP plugin's licence data.
+	 *
+	 * @param string $product_slug
+	 * @param string $key
+	 * @param mixed  $value
+	 *
+	 * @return bool
+	 */
+	public function update( $product_slug, $key, $value ) {
+
+		$options = get_option( 'honors_license_key', [] );
+
+		if ( ! isset( $options[ $product_slug ] ) ) {
+			$options[ $product_slug ] = [];
+		}
+
+		$options[ $product_slug ][ $key ] = $value;
+
+		update_option( 'honors_license_key', $options );
+	}
+
+	/**
+	 * Delete a HonorWP plugin's licence data.
+	 *
+	 * @param string $product_slug
+	 * @param string $key
+	 *
+	 * @return bool
+	 */
+	public function delete( $product_slug, $key ) {
+		$options = get_option( 'honors_license_key', [] );
+
+		if ( ! isset( $options[ $product_slug ] ) ) {
+			$options[ $product_slug ] = [];
+		}
+
+		unset( $options[ $product_slug ][ $key ] );
+		return update_option( 'honors_license_key', $options );
+	}
+
+	/**
+	 * Gets the license key and status for a HonorsWP managed plugin.
+	 *
+	 * @param string $product_slug
+	 * @return array|bool
+	 */
+	public function get_plugin_licence( $product_slug ) {
+		$licence_key = $this->get( $product_slug, 'licence_key' );
+		$status      = $this->get( $product_slug, 'status' );
+
+		return [
+			'licence_key' => $licence_key,
+			'status'      => $status,
+		];
 	}
 
 	/**
