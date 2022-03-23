@@ -9,6 +9,7 @@ class License {
 
 	private $product_id;
 	private $user_license_key;
+	private $show_in_ui;
 
 	private $api_url              = '';
 	private $api_data             = array();
@@ -19,7 +20,7 @@ class License {
 	private $health_check_timeout = 5;
 	private $licence_messages     = array();
 
-	public function __construct( $product_id = 0, $plugin_file, $version ) {
+	public function __construct( $product_id = 0, $plugin_file, $version, $show_in_ui = false ) {
 		$this->product_id = $product_id;
 
 		// admin settings.
@@ -636,13 +637,16 @@ class License {
 		// changelog
 		$this->init_changelog();
 
-		$main_menu = 'options-general.php';
+		if ( $this->show_in_ui ) {
 
-		if (
-			isset( $submenu[ $main_menu ] ) &&
-			! in_array( 'honorswp-settings', wp_list_pluck( $submenu[ $main_menu ], 2 ) )
-		) {
-			add_options_page( 'HonorsWP Settings', 'HonorsWP Settings', 'manage_options', 'honorswp-settings', array( $this, 'admin_settings_page' ) );
+			$main_menu = 'options-general.php';
+
+			if (
+				isset( $submenu[ $main_menu ] ) &&
+				! in_array( 'honorswp-settings', wp_list_pluck( $submenu[ $main_menu ], 2 ) )
+			) {
+				add_options_page( 'HonorsWP Settings', 'HonorsWP Settings', 'manage_options', 'honorswp-settings', array( $this, 'admin_settings_page' ) );
+			}
 		}
 	}
 
