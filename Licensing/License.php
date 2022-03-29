@@ -20,7 +20,7 @@ class License {
 	private $health_check_timeout = 5;
 	private $licence_messages     = array();
 
-	public function __construct( $product_id = 0, $plugin_file, $version, $show_in_ui = false ) {
+	public function __construct( $name = '', $product_id = 0, $admin_slug = '', $plugin_file, $version, $show_in_ui = false ) {
 		$this->product_id = $product_id;
 
 		// admin settings.
