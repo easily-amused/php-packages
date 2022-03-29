@@ -77,6 +77,34 @@ class License {
 		add_action( 'admin_menu', array( $this, 'admin_menu_init' ) );
 		add_filter( 'extra_plugin_headers', array( $this, 'extra_headers' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'setting_license_page_style' ) );
+
+		add_filter( 'update_license_host_url', array( $this, 'update_licensing_host_url' ), 10, 2 );
+	}
+
+	/**
+	 * Action to update the licensing host url.
+	 *
+	 * @param string $api_url     API host url.
+	 * @param string $license_key License key.
+	 *
+	 * @return string $api_url
+	 */
+	public function update_licensing_host_url( $api_url, $license_key ) {
+
+		if ( empty( $license_key ) ) {
+			return $api_url;
+		}
+
+		switch ( strstr( $license_key, '_', true ) ) {
+			case 'EABS':
+				$api_url = trailingslashit( 'https://blockstyles.com' );
+				break;
+			default:
+				$api_url = trailingslashit( 'https://honorswp.com' );
+				break;
+		}
+
+		return $api_url;
 	}
 
 	/**
@@ -491,7 +519,7 @@ class License {
 		);
 
 		$request = wp_remote_post(
-			$this->api_url,
+			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
 			array(
 				'timeout'   => 15,
 				'sslverify' => $verify_ssl,
@@ -668,7 +696,7 @@ class License {
 
 		// Call the custom API.
 		$response = wp_remote_post(
-			$this->api_url,
+			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
 			array(
 				'timeout'   => 15,
 				'sslverify' => false,
@@ -721,7 +749,7 @@ class License {
 
 		// Call the custom API.
 		$response = wp_remote_post(
-			$this->api_url,
+			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
 			array(
 				'timeout'   => 15,
 				'sslverify' => false,
