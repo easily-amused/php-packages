@@ -78,7 +78,30 @@ class License {
 		add_filter( 'extra_plugin_headers', array( $this, 'extra_headers' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'setting_license_page_style' ) );
 
+		add_filter( 'update_api_params', array( $this, 'update_api_params_based_on_key' ) );
 		add_filter( 'update_license_host_url', array( $this, 'update_licensing_host_url' ), 10, 2 );
+	}
+
+	/**
+	 * Function to update the license item_id.
+	 *
+	 * @param array $api_params This of api parameters.
+	 *
+	 * @return array $api_params
+	 */
+	public function update_api_params_based_on_key( $api_params ) {
+
+		if ( empty( $api_params['license'] ) ) {
+			return $api_params;
+		}
+
+		switch ( strstr( $api_params['license'], '_', true ) ) {
+			case 'EABS':
+				$api_params['item_id'] = 377;
+				break;
+		}
+
+		return $api_params;
 	}
 
 	/**
@@ -518,6 +541,8 @@ class License {
 			'beta'       => ! empty( $data['beta'] ),
 		);
 
+		$api_params = apply_filters( 'update_api_params', $api_params );
+
 		$request = wp_remote_post(
 			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
 			array(
@@ -694,6 +719,8 @@ class License {
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
 
+		$api_params = apply_filters( 'update_api_params', $api_params );
+
 		// Call the custom API.
 		$response = wp_remote_post(
 			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
@@ -746,6 +773,8 @@ class License {
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
+
+		$api_params = apply_filters( 'update_api_params', $api_params );
 
 		// Call the custom API.
 		$response = wp_remote_post(
@@ -939,6 +968,7 @@ class License {
 					'body'      => $api_params,
 				)
 			);
+
 
 			if ( ! is_wp_error( $request ) ) {
 				$version_info = json_decode( wp_remote_retrieve_body( $request ) );
