@@ -22,7 +22,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="plugin-licence">
 					<?php
 					$notices = EA\Licensing\License::get_messages( $product_slug );
-					error_log( print_r( $notices, 1 ) );
 					foreach ( $notices as $message ) {
 						echo '<div class="notice inline notice-error honors-license-notice"><p>' . wp_kses_post( $message ) . '</p></div>';
 					}
