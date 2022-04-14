@@ -115,19 +115,19 @@ class License {
 	public function update_licensing_host_url( $api_url, $license_key ) {
 
 		if ( empty( $license_key ) ) {
-			return $api_url;
+			return $this->api_url;
 		}
 
 		switch ( strstr( $license_key, '_', true ) ) {
 			case 'EABS':
-				$api_url = trailingslashit( 'https://blockstyles.com' );
+				$this->api_url = trailingslashit( 'https://blockstyles.com' );
 				break;
 			default:
-				$api_url = trailingslashit( 'https://honorswp.com' );
+				$this->api_url = trailingslashit( 'https://honorswp.com' );
 				break;
 		}
 
-		return $api_url;
+		return $this->api_url;
 	}
 
 	/**
