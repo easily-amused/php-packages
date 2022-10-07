@@ -95,10 +95,11 @@ class License {
 			return $api_params;
 		}
 
-		switch ( strstr( $api_params['license'], '_', true ) ) {
-			case 'EABS':
-				$api_params['item_id'] = 377;
-				break;
+		// License key format will be EABS_[product_id]_[license_key] and also support fallback EABS_[license_key]
+		if ( preg_match( '/EABS_(.*?)_/', $api_params['license'], $match ) === 1 ) {
+			$api_params['item_id'] = ! empty( $match[1] ) ? $match[1] : 377;
+		} elseif ( strstr( $api_params['license'], '_', true ) === 'EABS' ) {
+			$api_params['item_id'] = 377; // This is fallback product id for old blockstyle keys.
 		}
 
 		return $api_params;
