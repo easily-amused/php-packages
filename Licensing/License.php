@@ -1,6 +1,7 @@
 <?php
 
 namespace EA\Licensing;
+use \stdClass as stdClass;
 
 /**
  * EDD Software Licensing Class
