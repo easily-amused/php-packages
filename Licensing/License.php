@@ -1,6 +1,7 @@
 <?php
 
 namespace EA\Licensing;
+
 use \stdClass as stdClass;
 
 /**
@@ -21,7 +22,7 @@ class License {
 	private $health_check_timeout = 5;
 	private $licence_messages     = array();
 
-	public function __construct( $name = '', $product_id = 0, $admin_slug = '', $plugin_file, $version, $show_in_ui = false ) {
+	public function __construct( $name = '', $product_id = 0, $admin_slug = '', $plugin_file = '', $version = '', $show_in_ui = false, $init = true ) {
 		$this->product_id = $product_id;
 
 		// admin settings.
@@ -57,7 +58,9 @@ class License {
 		do_action( 'post_edd_sl_plugin_updater_setup', $edd_plugin_data );
 
 		// Set up hooks.
-		$this->init();
+		if ( $init ) {
+			$this->init();
+		}
 	}
 
 	/**
@@ -589,10 +592,25 @@ class License {
 	 */
 	public function get_messages( $product_slug ) {
 		if ( ! isset( $this->licence_messages[ $product_slug ] ) ) {
-			$this->licence_messages[ $product_slug ] = [];
+			$this->licence_messages[ $product_slug ] = array();
 		}
 
 		return $this->licence_messages[ $product_slug ];
+	}
+
+	/**
+	 * Get a plugin's licence messages.
+	 *
+	 * @param string $product_slug The plugin slug.
+	 * @return array
+	 */
+	public static function get_messages_static( $product_slug ) {
+		$class = (new self);
+		if ( ! isset( $class->licence_messages[ $product_slug ] ) ) {
+			$class->licence_messages[ $product_slug ] = array();
+		}
+
+		return $class->licence_messages[ $product_slug ];
 	}
 
 	/**
@@ -763,14 +781,14 @@ class License {
 		// Retrieve the license from the database.
 		$license = get_option( 'honors_license_key' );
 
-		if ( empty( $license[ $product_slug ][ 'licence_key' ] ) ) {
+		if ( empty( $license[ $product_slug ]['licence_key'] ) ) {
 			return;
 		}
 
 		// Data to send in our API request.
 		$api_params = array(
 			'edd_action'  => 'deactivate_license',
-			'license'     => $license[ $product_slug ][ 'licence_key' ],
+			'license'     => $license[ $product_slug ]['licence_key'],
 			'item_id'     => $this->product_id, // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
@@ -819,7 +837,7 @@ class License {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$honors_plugins = [];
+		$honors_plugins = array();
 		$plugins        = get_plugins();
 
 		foreach ( $plugins as $filename => $data ) {
@@ -828,9 +846,9 @@ class License {
 				continue;
 			}
 
-			$data['_filename']                         = $filename;
-			$data['_product_slug']                     = $data['HonorsWP-Product'];
-			$data['_type']                             = 'plugin';
+			$data['_filename']                           = $filename;
+			$data['_product_slug']                       = $data['HonorsWP-Product'];
+			$data['_type']                               = 'plugin';
 			$honors_plugins[ $data['HonorsWP-Product'] ] = $data;
 		}
 
@@ -858,7 +876,7 @@ class License {
 	 * @return mixed
 	 */
 	public function get( $product_slug, $key, $default = false ) {
-		$options = get_option( 'honors_license_key', [] );
+		$options = get_option( 'honors_license_key', array() );
 
 		if ( isset( $options[ $product_slug ][ $key ] ) ) {
 			return $options[ $product_slug ][ $key ];
@@ -877,10 +895,10 @@ class License {
 	 */
 	public function update( $product_slug, $key, $value ) {
 
-		$options = get_option( 'honors_license_key', [] );
+		$options = get_option( 'honors_license_key', array() );
 
 		if ( ! isset( $options[ $product_slug ] ) ) {
-			$options[ $product_slug ] = [];
+			$options[ $product_slug ] = array();
 		}
 
 		$options[ $product_slug ][ $key ] = $value;
@@ -897,10 +915,10 @@ class License {
 	 * @return bool
 	 */
 	public function delete( $product_slug, $key ) {
-		$options = get_option( 'honors_license_key', [] );
+		$options = get_option( 'honors_license_key', array() );
 
 		if ( ! isset( $options[ $product_slug ] ) ) {
-			$options[ $product_slug ] = [];
+			$options[ $product_slug ] = array();
 		}
 
 		unset( $options[ $product_slug ][ $key ] );
@@ -917,10 +935,26 @@ class License {
 		$licence_key = $this->get( $product_slug, 'licence_key' );
 		$status      = $this->get( $product_slug, 'status' );
 
-		return [
+		return array(
 			'licence_key' => $licence_key,
 			'status'      => $status,
-		];
+		);
+	}
+
+	/**
+	 * Gets the license key and status for a HonorsWP managed plugin.
+	 *
+	 * @param string $product_slug
+	 * @return array|bool
+	 */
+	public static function get_plugin_licence_static( $product_slug ) {
+		$licence_key = ( new self() )->get( $product_slug, 'licence_key' );
+		$status      = ( new self() )->get( $product_slug, 'status' );
+
+		return array(
+			'licence_key' => $licence_key,
+			'status'      => $status,
+		);
 	}
 
 	/**
@@ -970,7 +1004,6 @@ class License {
 					'body'      => $api_params,
 				)
 			);
-
 
 			if ( ! is_wp_error( $request ) ) {
 				$version_info = json_decode( wp_remote_retrieve_body( $request ) );

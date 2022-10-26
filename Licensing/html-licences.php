@@ -4,6 +4,7 @@
  *
  */
 
+ 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -13,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 <?php if ( ! empty( $licenced_plugins ) ) :
 		foreach ( $licenced_plugins as $product_slug => $plugin_data ) :
 
-			$licence = EA\Licensing\License::get_plugin_licence( $product_slug );
+			$licence = EA\Licensing\License::get_plugin_licence_static( $product_slug );
 			?>
 			<div class="licence-row">
 				<div class="plugin-info">
@@ -21,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 				<div class="plugin-licence">
 					<?php
-					$notices = EA\Licensing\License::get_messages( $product_slug );
+					$notices = EA\Licensing\License::get_messages_static( $product_slug );
 					foreach ( $notices as $message ) {
 						echo '<div class="notice inline notice-error honors-license-notice"><p>' . wp_kses_post( $message ) . '</p></div>';
 					}
