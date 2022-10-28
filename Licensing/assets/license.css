@@ -1,0 +1,64 @@
+/**
+ * Licenses wrapper.
+ */
+ .honorswp-licences {
+	display: grid;
+	grid-template-columns: auto;
+	grid-gap: 10px;
+	padding: 10px;
+}
+
+.licence-row {
+	background-color: rgba(255, 255, 255, 0.8);
+	border: 1px solid rgba(0, 0, 0, 0.8);
+	font-size: 15px;
+	text-align: center;
+	padding: 25px 0;
+	border-radius: 5px;
+}
+
+.plugin-info {
+	padding-bottom: 18px;
+	font-weight: 700;
+}
+
+.ea-submit-button {
+	display: block;
+	padding-top: 20px;
+}
+
+.ea-submit-button .deactivate,
+.ea-submit-button .activate {
+	width: 45%;
+	border: 1px solid currentColor;
+}
+
+.ea-submit-button .deactivate {
+	color: #FF0000;
+}
+
+.ea-submit-button .activate {
+	color: #008000;
+}
+
+input[type="text"].ea-license-text {
+	width: 60%;
+}
+
+.honors-license-notice {
+	margin: auto;
+	margin-bottom: 18px;
+	width: 65%;
+}
+
+@media only screen and ( min-width: 600px ) {
+	.honorswp-licences {
+		grid-template-columns: auto auto;
+	}
+}
+
+@media only screen and ( min-width: 1080px ) {
+	.honorswp-licences {
+		grid-template-columns: auto auto auto;
+	}
+}
