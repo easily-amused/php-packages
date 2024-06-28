@@ -7,35 +7,48 @@ use \stdClass as stdClass;
 /**
  * EDD Software Licensing Class
  */
-class License {
+class License_V2 {
 
 	private $product_id;
 	private $user_license_key;
 	private $show_in_ui;
-
+	private $product_name = '';
+	private $license_page = '';
 	private $api_url              = '';
 	private $api_data             = array();
 	private $name                 = '';
 	private $slug                 = '';
+	private $product_slug         = '';
 	private $version              = '';
 	private $cache_key            = '';
 	private $health_check_timeout = 5;
 	private $licence_messages     = array();
 
-	public function __construct( $name = '', $product_id = 0, $admin_slug = '', $plugin_file = '', $version = '', $show_in_ui = false, $init = true ) {
-		$this->product_id = $product_id;
-
+	public function __construct( $name = '', $product_id = 0, $admin_slug = '', $plugin_file = '', $version = '', $show_in_ui = true, $init = true ) {
+		$this->product_id   = $product_id;
+		$this->product_name = $name;
+		$this->license_page = $admin_slug . '-settings';
 		// admin settings.
 		$this->setting_license = 'honors_license';
 		$this->show_in_ui      = $show_in_ui;
 
-		$this->api_url = trailingslashit( 'https://honorswp.com' );
-		$this->name    = plugin_basename( $plugin_file );
-		$this->slug    = basename( $plugin_file, '.php' );
+		$this->api_url      = trailingslashit( 'https://honorswp.com' );
+		$this->name         = plugin_basename( $plugin_file );
+		$this->slug         = basename( $plugin_file, '.php' );
+		$this->product_slug = $admin_slug;
+		$this->version      = $version;
 
-		$this->version          = $version;
-		$current_licence_keys   = get_option( 'honors_license_key' );
-		$this->user_license_key = ! empty( $current_licence_keys[ $this->slug ]['licence_key'] ) ? $current_licence_keys[ $this->slug ]['licence_key'] : '';
+		// Get license keys from DB.
+		$current_license_keys = get_option( 'honors_license_key', true );
+		$current_product      = array_filter( $current_license_keys, function( $products ) {
+			return $products['product_id'] === $this->product_id;
+
+		});
+
+		$current_product_licence = array_shift($current_product);
+		// $current_product_licence = $current_product_licence['licence_key'] ?? '';
+		$this->user_license_key = $current_product_licence['licence_key'] ?? '';
+		// $this->user_license_key = ! empty( $current_product_licence ) ? $current_product_licence : '';
 		$this->cache_key        = 'edd_sl_' . md5( serialize( $this->slug . $this->user_license_key ) );
 
 		$this->api_data = array(
@@ -71,6 +84,12 @@ class License {
 	 * @return void
 	 */
 	public function init() {
+		// Set All Access Pass as product.
+		$ea_as_check_license_options = get_option( 'honors_license_key', array() );
+		if ( empty( $ea_as_check_license_options ) || empty( $ea_as_check_license_options['all-access'] ) ) {
+			$ea_as_check_license_options['all-access']['product_id'] = '4730';
+			update_option( 'honors_license_key', $ea_as_check_license_options );
+		}
 
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_update' ) );
 		add_filter( 'plugins_api', array( $this, 'plugins_api_filter' ), 10, 3 );
@@ -149,17 +168,6 @@ class License {
 	}
 
 	/**
-	 * Adds newly recognized data header in WordPress plugin files.
-	 *
-	 * @param array $headers
-	 * @return array
-	 */
-	public function extra_headers( $headers ) {
-		$headers[] = 'HonorsWP-Product';
-		return $headers;
-	}
-
-	/**
 	 * Check for Updates at the defined API endpoint and modify the update array.
 	 *
 	 * This function dives into the update API just when WordPress creates its update array,
@@ -211,7 +219,6 @@ class License {
 	 */
 	public function get_repo_api_data() {
 		$version_info = $this->get_cached_version_info();
-
 		if ( false === $version_info ) {
 			$version_info = $this->api_request(
 				'plugin_latest_version',
@@ -220,6 +227,7 @@ class License {
 					'beta' => false,
 				)
 			);
+			// error_log(print_r(['version_infor', $version_info], true));
 			if ( ! $version_info ) {
 				return false;
 			}
@@ -230,7 +238,6 @@ class License {
 
 			$this->set_version_info_cache( $version_info );
 		}
-
 		return $version_info;
 	}
 
@@ -525,7 +532,7 @@ class License {
 		}
 
 		$data = array_merge( $this->api_data, $_data );
-
+// error_log(print_r(['api data', $data], true));
 		if ( $data['slug'] != $this->slug ) {
 			return false;
 		}
@@ -547,6 +554,7 @@ class License {
 		);
 
 		$api_params = apply_filters( 'update_api_params', $api_params );
+		// error_log(print_r(['api params', $api_params], true));
 
 		$request = wp_remote_post(
 			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
@@ -556,7 +564,7 @@ class License {
 				'body'      => $api_params,
 			)
 		);
-
+		// error_log(print_r(['api request', $request], true));
 		if ( ! is_wp_error( $request ) ) {
 			$request = json_decode( wp_remote_retrieve_body( $request ) );
 		}
@@ -580,7 +588,6 @@ class License {
 				$request->$key = (array) $section;
 			}
 		}
-
 		return $request;
 	}
 
@@ -620,7 +627,6 @@ class License {
 	 * @return array
 	 */
 	public function set_messages( $product_slug, $status ) {
-
 		switch ( $status ) {
 
 			case 'expired':
@@ -651,7 +657,9 @@ class License {
 			case 'no_activations_left':
 				$this->licence_messages[ $product_slug ][] = __( 'Your license key has reached its activation limit.' );
 				break;
-
+			case 'invalid_item_id':
+				$this->licence_messages[ $product_slug ][] = __( 'The product ID is incorrect.' );
+				break;
 			default:
 				$this->licence_messages[ $product_slug ][] = __( 'An error occurred, please try again.' );
 				break;
@@ -666,10 +674,9 @@ class License {
 	 * @return void
 	 */
 	public function admin_actions() {
-
 		// Register settings.
-		register_setting( $this->setting_license, 'honors_license_key' );
-		register_setting( $this->setting_license, 'honors_license_status' );
+		// register_setting( $this->setting_license, 'honors_license_key' );
+		// register_setting( $this->setting_license, 'honors_license_status' );
 
 		if (
 			empty( $_POST )
@@ -680,13 +687,13 @@ class License {
 		) {
 			return false;
 		}
-
 		$product_slug = sanitize_text_field( wp_unslash( $_POST['product_slug'] ) );
-
+		// error_log(print_r(['post', $_POST], true));
 		switch ( $_POST['action'] ) {
 			case 'activate':
 				if ( empty( $_POST['licence_key'] ) ) {
-					$this->add_error( $product_slug, __( 'Please enter a valid license key in order to activate this plugin\'s license.' ) );
+					$this->licence_messages[ $product_slug ] = esc_html( 'Please enter a valid license key in order to activate this plugin\'s license.' );
+					// $this->add_error( $product_slug, __( 'Please enter a valid license key in order to activate this plugin\'s license.' ) );
 					break;
 				}
 
@@ -694,7 +701,11 @@ class License {
 				$this->activate_license( $product_slug, $licence_key );
 				break;
 			case 'deactivate':
-				$this->deactivate_license( $product_slug );
+				if ( 'Check License' === $_POST['submit'] ) {
+					$this->check_license( $product_slug );
+				} else {
+					$this->deactivate_license( $product_slug );
+				}
 				break;
 		}
 	}
@@ -718,8 +729,20 @@ class License {
 				isset( $submenu[ $main_menu ] ) &&
 				! in_array( 'honorswp-settings', wp_list_pluck( $submenu[ $main_menu ], 2 ) )
 			) {
-				add_options_page( 'HonorsWP Settings', 'HonorsWP Settings', 'manage_options', 'honorswp-settings', array( $this, 'admin_settings_page' ) );
+				add_options_page(
+					'HonorsWP Settings',
+					'HonorsWP Settings',
+					'manage_options',
+					'honorswp-settings',
+					array( $this, 'admin_settings_page_new' ) );
 			}
+		} else {
+			add_plugins_page(
+				$this->product_name . ' Settings',
+				$this->product_name,
+				'manage_options',
+				$this->license_page,
+				array( $this, 'admin_settings_page' ) );
 		}
 	}
 
@@ -729,18 +752,29 @@ class License {
 	 * @return void
 	 */
 	private function activate_license( $product_slug, $licence_key ) {
+		// static $run = 0;
+		if ( $run ) {
+			return;
+		}
+
+		$product_id = $this->get( $product_slug, 'product_id' );
+
+		if ( empty( $product_id ) ) {
+			$this->licence_messages[ $product_slug ] = __( 'An error occurred. Please install the latest version of the plugin from HonorsWP and try again.' );
+			return;
+		}
 
 		// data to send in our API request
 		$api_params = array(
 			'edd_action'  => 'activate_license',
 			'license'     => $licence_key,
-			'item_id'     => $this->product_id, // The ID of our product in EDD.
+			'item_id'     => trim( $product_id ), // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
 
 		$api_params = apply_filters( 'update_api_params', $api_params );
-
+		// error_log(print_r(['activate license api params', $api_params], true));
 		// Call the custom API.
 		$response = wp_remote_post(
 			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
@@ -762,7 +796,7 @@ class License {
 		} else {
 
 			$license_data = json_decode( wp_remote_retrieve_body( $response ) );
-
+			// error_log(print_r(['edd response', $license_data], true));
 			if ( false === $license_data->success ) {
 				$this->licence_messages[ $product_slug ] = $this->set_messages( $product_slug, $license_data->error );
 				return;
@@ -773,11 +807,26 @@ class License {
 		if ( empty( $this->licence_messages[ $product_slug ] ) ) {
 			$this->update( $product_slug, 'licence_key', $licence_key );
 			$this->update( $product_slug, 'status', $license_data->license );
-		}
 
+			if ( 'all-access' === $product_slug ) {
+				$config = include_once  dirname( __FILE__ ). '/config.php';
+				foreach ( $config as $product_slug => $value ) {
+					// error_log(print_r(['value', $value['product_id']], true));
+					$this->update( $product_slug, 'product_id', $value['product_id'] );
+					$this->update( $product_slug, 'licence_key', $licence_key );
+					$this->update( $product_slug, 'status', $license_data->license );
+				}
+			}
+		}
+		$run++;
+		// error_log(print_r(['runs???', $run], true));
 	}
 
-	private function deactivate_license( $product_slug ) {
+	private function check_license( $product_slug ) {
+		static $run = 0;
+		if ( $run ) {
+			return;
+		}
 		// Retrieve the license from the database.
 		$license = get_option( 'honors_license_key' );
 
@@ -787,9 +836,9 @@ class License {
 
 		// Data to send in our API request.
 		$api_params = array(
-			'edd_action'  => 'deactivate_license',
+			'edd_action'  => 'check_license',
 			'license'     => $license[ $product_slug ]['licence_key'],
-			'item_id'     => $this->product_id, // The ID of our product in EDD.
+			'item_id'     => $license[ $product_slug ]['product_id'], // The ID of our product in EDD.
 			'url'         => home_url(),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 		);
@@ -805,7 +854,7 @@ class License {
 				'body'      => $api_params,
 			)
 		);
-
+		// error_log(print_r(['check edd response', $response], true));
 		// make sure the response came back okay
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
 
@@ -818,12 +867,71 @@ class License {
 
 		// decode the license data.
 		$license_data = json_decode( wp_remote_retrieve_body( $response ) );
+		// error_log(print_r(['check edd response', $license_data], true));
+		$this->licence_messages[ $product_slug ] = 'The license is '. $license_data->license;
+	}
 
+	private function deactivate_license( $product_slug ) {
+		static $run = 0;
+		if ( $run ) {
+			return;
+		}
+		// Retrieve the license from the database.
+		$license = get_option( 'honors_license_key' );
+
+		if ( empty( $license[ $product_slug ]['licence_key'] ) ) {
+			return;
+		}
+		// error_log(print_r(['license info', $license[ $product_slug ]], true));
+		// Data to send in our API request.
+		$api_params = array(
+			'edd_action'  => 'deactivate_license',
+			'license'     => $license[ $product_slug ]['licence_key'],
+			'item_id'     => $license[ $product_slug ]['product_id'], // The ID of our product in EDD.
+			'url'         => home_url(),
+			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
+		);
+
+		$api_params = apply_filters( 'update_api_params', $api_params );
+
+		// Call the custom API.
+		$response = wp_remote_post(
+			apply_filters( 'update_license_host_url', $this->api_url, $api_params['license'] ),
+			array(
+				'timeout'   => 15,
+				'sslverify' => false,
+				'body'      => $api_params,
+			)
+		);
+		// error_log(print_r(['deactivate edd response', $response], true));
+		// make sure the response came back okay
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+
+			if ( is_wp_error( $response ) ) {
+				$this->licence_messages[ $product_slug ] = $response->get_error_message();
+			} else {
+				$this->licence_messages[ $product_slug ] = __( 'An error occurred, please try again.' );
+			}
+		}
+
+		// decode the license data.
+		$license_data = json_decode( wp_remote_retrieve_body( $response ) );
+		// error_log(print_r(['deactivate edd response', $license_data], true));
 		// $license_data->license will be either "deactivated" or "failed"
-		if ( 'deactivated' === $license_data->license ) {
+		if ( 'deactivated' === $license_data->license || 'failed' === $license_data->license ) {
+			// error_log(print_r(['deactivated response', $license_data->license], true));
+			// $this->delete( $product_slug );
 			$this->delete( $product_slug, 'licence_key' );
 			$this->delete( $product_slug, 'status' );
+			if ( 'all-access' === $product_slug ) {
+				$config = include_once  dirname( __FILE__ ). '/config.php';
+				foreach ( $config as $product_slug => $value ) {
+					$this->delete( $product_slug, 'licence_key' );
+					$this->delete( $product_slug, 'status' );
+				}
+			}
 		}
+		$run++;
 	}
 
 	/**
@@ -842,16 +950,30 @@ class License {
 
 		foreach ( $plugins as $filename => $data ) {
 
-			if ( empty( $data['HonorsWP-Product'] ) || ( true === $active_only && ! is_plugin_active( $filename ) ) ) {
+			if ( true === $active_only && ! is_plugin_active( $filename ) ) {
+				continue;
+			}
+
+			if ( empty( $data['Author'] ) ) {
+				continue;
+			}
+
+			if ( in_array( $data['TextDomain'], [ 'learndash-coupons', 'learndash-powerpack', 'sales-tax-for-learndash' ], true ) ) {
+				continue;
+			}
+
+			if ( ! in_array( $data['Author'], ['Easily Amused, Inc.', 'Easily Amused', 'HonorsWP', 'Honors WP'] , true ) ) {
 				continue;
 			}
 
 			$data['_filename']                           = $filename;
-			$data['_product_slug']                       = $data['HonorsWP-Product'];
+			$data['_product_slug']                       = strtolower(str_replace(' ', '-', $data['Name']) );
+			$data['_product_name']                       = $data['Name'];
 			$data['_type']                               = 'plugin';
-			$honors_plugins[ $data['HonorsWP-Product'] ] = $data;
-		}
 
+			$honors_plugins[ $data['_product_slug'] ] = $data;
+		}
+		// error_log(print_r(['honors plugins', $honors_plugins], true));
 		return $honors_plugins;
 	}
 
@@ -860,9 +982,8 @@ class License {
 	 *
 	 * @return void
 	 */
-	public function admin_settings_page() {
+	public function admin_settings_page_new() {
 		$licenced_plugins = $this->get_installed_plugins();
-
 		include_once dirname( __FILE__ ) . '/html-licences.php';
 	}
 
@@ -876,6 +997,8 @@ class License {
 	 * @return mixed
 	 */
 	public function get( $product_slug, $key, $default = false ) {
+		$this->maybe_convert_options( $product_slug, $key );
+
 		$options = get_option( 'honors_license_key', array() );
 
 		if ( isset( $options[ $product_slug ][ $key ] ) ) {
@@ -902,7 +1025,7 @@ class License {
 		}
 
 		$options[ $product_slug ][ $key ] = $value;
-
+		// error_log(print_r(['options to update', $options], true));
 		update_option( 'honors_license_key', $options );
 	}
 
@@ -922,7 +1045,33 @@ class License {
 		}
 
 		unset( $options[ $product_slug ][ $key ] );
+
+		// error_log(print_r(['unset option?', $options], true));
+
 		return update_option( 'honors_license_key', $options );
+	}
+
+
+
+	/**
+	 * Maybe convert old options
+	 *
+	 * @param string $product_slug Product slug.
+	 *
+	 * @return void
+	 */
+	private function maybe_convert_options( $product_slug ) {
+		$old_license_key_key    = 'honors_' . $product_slug . '_license_key';
+		$old_license_status_key = 'honors_' . $product_slug . '_license_status';
+		// Retrieve the license from the database.
+		$existing_license = trim( get_option( $old_license_key_key ) );
+		$existing_status  = get_option( $old_license_status_key, false );
+		if ( ! empty( $license ) ) {
+			$this->update( $product_slug, 'licence_key', $existing_license );
+			$this->update( $product_slug, 'status', $existing_status );
+			delete_option( $old_license_key_key );
+			delete_option( $old_license_status_key );
+		}
 	}
 
 	/**
@@ -1096,5 +1245,16 @@ class License {
 	 */
 	private function verify_ssl() {
 		return (bool) apply_filters( 'edd_sl_api_request_verify_ssl', true, $this );
+	}
+
+	/**
+	 * Adds newly recognized data header in WordPress plugin files.
+	 *
+	 * @param array $headers
+	 * @return array
+	 */
+	public function extra_headers( $headers ) {
+		$headers[] = 'HonorsWP-Product';
+		return $headers;
 	}
 }

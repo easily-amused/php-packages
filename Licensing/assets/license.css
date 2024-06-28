@@ -22,23 +22,24 @@
 	font-weight: 700;
 }
 
-.ea-submit-button {
-	display: block;
-	padding-top: 20px;
-}
 
-.ea-submit-button .deactivate,
-.ea-submit-button .activate {
-	width: 45%;
-	border: 1px solid currentColor;
+.ea-button-row {
+	margin-top: 20px;
+}
+.ea-submit-button {
+	/* display: block; */
+	padding-top: 20px;
 }
 
 .ea-submit-button .deactivate {
 	color: #FF0000;
+	border: 1px solid currentColor;
 }
 
 .ea-submit-button .activate {
 	color: #008000;
+	width: 45%;
+	border: 1px solid currentColor;
 }
 
 input[type="text"].ea-license-text {
