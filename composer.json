@@ -10,8 +10,22 @@
         }
     ],
     "minimum-stability": "stable",
-    "require": {},
+    "require-dev": {
+        "phpcompatibility/phpcompatibility-wp": "^2",
+        "phpcompatibility/php-compatibility": "dev-develop as 9.99.99",
+        "wp-coding-standards/wpcs": "^3.0"
+    },
+    "scripts": {
+        "phpcs": "phpcs",
+        "phpcbf": "phpcbf",
+        "php8-check": "phpcs . --standard=PHPCompatibilityWP --severity=1 --runtime-set testVersion 8.2- --extensions=php --ignore=vendor"
+    },
     "autoload": {
         "psr-4": { "EA\\Licensing\\" : "Licensing/" }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
     }
 }
