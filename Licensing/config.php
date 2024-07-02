@@ -1,57 +1,66 @@
 <?php
+/**
+ * Config array with plugin slugs and product IDs.
+ *
+ * @package EA\Licensing
+ */
+
 return [
-	'additional-shortcodes-for-learndash' => [
-		'product_id' => 3916
+	'additional-shortcodes-for-learndash'             => [
+		'product_id' => 3916,
 	],
-	'certificate-archive-for-learndash' => [
-		'product_id' => 5916
+	'block-styles-for-wordpress'                      => [
+		'product_id' => 971,
 	],
-	'course-countdown-timer-for-learndash' => [
-		'product_id' => 6214
+	'calendar-for-learndash'                          => [
+		'product_id' => 6667,
 	],
-	'course-extensions-for-learndash' => [
-		'product_id' => 3917
+	'certificate-archive-for-learndash'               => [
+		'product_id' => 5916,
 	],
-	'course-reviews-for-learndash' => [
-		'product_id' => 5369
+	'course-countdown-timer-for-learndash'            => [
+		'product_id' => 6214,
 	],
-	'course-seats-for-learndash' => [
-		'product_id' => 5363
+	'course-extensions-for-learndash'                 => [
+		'product_id' => 3917,
 	],
-	'edit-quiz-answers-for-learndash' => [
-		'product_id' => 5912
+	'course-reviews-for-learndash'                    => [
+		'product_id' => 5369,
 	],
-	'calendar-for-learndash' => [
-		'product_id' => 6667
-	],
-	'faculty-and-staff-showcase' => [
-		'product_id' => 967
+	'course-seats-for-learndash'                      => [
+		'product_id' => 5363,
 	],
 	'departments-a-wordpress-user-enhancement-plugin' => [
-		'product_id' => 969
+		'product_id' => 969,
 	],
-	'divi-compatibility-for-learndash' => [
-		'product_id' => 5904
+	'divi-compatibility-for-learndash'                => [
+		'product_id' => 5904,
 	],
-	'flashcards-for-wordpress' => [
-		'product_id' => 6626
+	'dynamic-content'                                 => [
+		'product_id' => 5918,
 	],
-	'private-message-for-learndash' => [
-		'product_id' => 6615
+	'edit-quiz-answers-for-learndash'                 => [
+		'product_id' => 5912,
 	],
-	'related-courses-for-learndash' => [
-		'product_id' => 5914
+	'faculty-and-staff-showcase'                      => [
+		'product_id' => 967,
 	],
-	'student-parent-access-for-learndash' => [
-		'product_id' => 6537
+	'flashcards-for-wordpress'                        => [
+		'product_id' => 6626,
 	],
-	'unique-user-content-learndash' => [
-		'product_id' => 6691
+	'private-message-for-learndash'                   => [
+		'product_id' => 6615,
 	],
-	'transfer' => [
-		'product_id' => 19178
+	'related-courses-for-learndash'                   => [
+		'product_id' => 5914,
 	],
-	'dynamic-content' => [
-		'product_id' => 5918
+	'student-parent-access-for-learndash'             => [
+		'product_id' => 6537,
+	],
+	'unique-user-content-learndash'                   => [
+		'product_id' => 6691,
+	],
+	'transfer'                                        => [
+		'product_id' => 19178,
 	],
 ];
