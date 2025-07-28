@@ -12,7 +12,7 @@ use stdClass;
 /**
  * EDD Software Licensing Class
  */
-#[\AllowDynamicProperties]
+#[AllowDynamicProperties]
 class License {
 
 	/**
