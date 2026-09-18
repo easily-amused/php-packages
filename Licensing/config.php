@@ -9,6 +9,9 @@ return [
 	'additional-shortcodes-for-learndash'             => [
 		'product_id' => 3916,
 	],
+	'attendance-for-wordpress'                        => [
+		'product_id' => 25932,
+	],
 	'block-styles-for-wordpress'                      => [
 		'product_id' => 971,
 	],
