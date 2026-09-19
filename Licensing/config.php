@@ -51,6 +51,9 @@ return [
 	'flashcards-for-wordpress'                        => [
 		'product_id' => 6626,
 	],
+	'glossary-by-honors-wp'                           => [
+		'product_id' => 25940,
+	],
 	'private-message-for-learndash'                   => [
 		'product_id' => 6615,
 	],
