@@ -9,6 +9,9 @@ return [
 	'additional-shortcodes-for-learndash'             => [
 		'product_id' => 3916,
 	],
+	'attendance-for-wordpress'                        => [
+		'product_id' => 25932,
+	],
 	'block-styles-for-wordpress'                      => [
 		'product_id' => 971,
 	],
@@ -47,6 +50,9 @@ return [
 	],
 	'flashcards-for-wordpress'                        => [
 		'product_id' => 6626,
+	],
+	'glossary-by-honors-wp'                           => [
+		'product_id' => 25940,
 	],
 	'private-message-for-learndash'                   => [
 		'product_id' => 6615,
